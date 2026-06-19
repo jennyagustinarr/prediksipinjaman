@@ -1,0 +1,414 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Loan Approval Prediction Dashboard</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.2/dist/chart.umd.min.js"></script>
+</head>
+<body>
+    <aside class="sidebar" id="sidebar">
+        <div class="sidebar-brand">
+            <i class="fa-solid fa-leaf brand-icon"></i>
+            <div class="brand-text">
+                <span class="brand-title">LoanWise</span>
+                <span class="brand-sub">Random Forest</span>
+            </div>
+        </div>
+
+        <nav class="sidebar-nav">
+            <button class="nav-item active" data-tab="overview">
+                <i class="fa-solid fa-chart-pie"></i>
+                <span>Ringkasan</span>
+            </button>
+            <button class="nav-item" data-tab="predict">
+                <i class="fa-solid fa-magnifying-glass-chart"></i>
+                <span>Prediksi</span>
+            </button>
+            <button class="nav-item" data-tab="visualization">
+                <i class="fa-solid fa-chart-bar"></i>
+                <span>Visualisasi</span>
+            </button>
+            <button class="nav-item" data-tab="model">
+                <i class="fa-solid fa-brain"></i>
+                <span>Evaluasi Model</span>
+            </button>
+            <button class="nav-item" data-tab="dataset">
+                <i class="fa-solid fa-table"></i>
+                <span>Dataset</span>
+            </button>
+        </nav>
+
+        <div class="sidebar-footer">
+            <i class="fa-solid fa-seedling"></i>
+            <span>Dashboard Machine Learning</span>
+        </div>
+    </aside>
+
+    <div class="main-wrapper">
+        <header class="topbar">
+            <button class="sidebar-toggle" id="sidebarToggle" aria-label="Buka menu">
+                <i class="fa-solid fa-bars"></i>
+            </button>
+            <div class="topbar-title" id="topbarTitle">Ringkasan Dataset</div>
+            <div class="topbar-right">
+                <span class="badge-dataset">
+                    <i class="fa-solid fa-database"></i>
+                    <span id="totalRows">—</span> data
+                </span>
+                <span class="badge-model">
+                    <i class="fa-solid fa-tree"></i>
+                    Random Forest
+                </span>
+            </div>
+        </header>
+
+        <section class="tab-content active" id="tab-overview">
+            <div class="page-header">
+                <h2><i class="fa-solid fa-chart-pie"></i> Ringkasan Dataset & Model</h2>
+                <p>Gambaran umum data pengajuan pinjaman, status persetujuan, dan performa model klasifikasi.</p>
+            </div>
+
+            <div class="status-card">
+                <span class="pulse"></span>
+                <p id="modelStatus">Memuat status model...</p>
+            </div>
+
+            <div class="kpi-grid">
+                <div class="kpi-card kpi-green">
+                    <div class="kpi-icon"><i class="fa-solid fa-layer-group"></i></div>
+                    <div class="kpi-body">
+                        <span class="kpi-label">Total Data</span>
+                        <span class="kpi-value" id="kpiTotal">—</span>
+                    </div>
+                </div>
+                <div class="kpi-card kpi-approved">
+                    <div class="kpi-icon"><i class="fa-solid fa-circle-check"></i></div>
+                    <div class="kpi-body">
+                        <span class="kpi-label">Approved</span>
+                        <span class="kpi-value" id="kpiApproved">—</span>
+                    </div>
+                </div>
+                <div class="kpi-card kpi-rejected">
+                    <div class="kpi-icon"><i class="fa-solid fa-circle-xmark"></i></div>
+                    <div class="kpi-body">
+                        <span class="kpi-label">Rejected</span>
+                        <span class="kpi-value" id="kpiRejected">—</span>
+                    </div>
+                </div>
+                <div class="kpi-card kpi-emerald">
+                    <div class="kpi-icon"><i class="fa-solid fa-bullseye"></i></div>
+                    <div class="kpi-body">
+                        <span class="kpi-label">Akurasi RF</span>
+                        <span class="kpi-value" id="kpiAcc">—</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="chart-row">
+                <div class="chart-card">
+                    <div class="chart-card-header">
+                        <i class="fa-solid fa-circle-half-stroke"></i>
+                        Distribusi Status Pinjaman
+                    </div>
+                    <div class="chart-body">
+                        <canvas id="chartPie"></canvas>
+                    </div>
+                </div>
+                <div class="chart-card">
+                    <div class="chart-card-header">
+                        <i class="fa-solid fa-square-poll-vertical"></i>
+                        Perbandingan Evaluasi Model
+                    </div>
+                    <div class="chart-body">
+                        <canvas id="chartEvaluationOverview"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <div class="info-box">
+                <div class="info-box-icon"><i class="fa-solid fa-circle-info"></i></div>
+                <div>
+                    <strong>Tentang Dashboard</strong><br>
+                    Dashboard ini menggunakan dataset loan approval dengan model Random Forest. Input pemohon diproses melalui pipeline preprocessing dan model akan menghasilkan prediksi <em>Approved</em> atau <em>Rejected</em> beserta probabilitasnya.
+                </div>
+            </div>
+        </section>
+
+        <section class="tab-content" id="tab-predict">
+            <div class="page-header">
+                <h2><i class="fa-solid fa-magnifying-glass-chart"></i> Prediksi Persetujuan Pinjaman</h2>
+                <p>Masukkan data pemohon untuk memprediksi kemungkinan status pengajuan pinjaman.</p>
+            </div>
+
+            <form id="predictionForm" class="predict-form">
+                <div class="form-grid">
+                    <div class="form-column">
+                        <div class="form-section-card">
+                            <div class="fscard-header">
+                                <i class="fa-solid fa-user"></i> Profil Pemohon
+                            </div>
+                            <div class="form-fields">
+                                <div class="field-group">
+                                    <label>Jumlah Tanggungan
+                                        <span class="field-hint">Jumlah keluarga yang menjadi tanggungan pemohon</span>
+                                    </label>
+                                    <input type="number" name="no_of_dependents" min="0" max="10" value="2" required>
+                                </div>
+                                <div class="field-group">
+                                    <label>Pendidikan
+                                        <span class="field-hint">Status pendidikan terakhir pemohon</span>
+                                    </label>
+                                    <select name="education" required>
+                                        <option value="Graduate">Graduate</option>
+                                        <option value="Not Graduate">Not Graduate</option>
+                                    </select>
+                                </div>
+                                <div class="field-group">
+                                    <label>Self Employed
+                                        <span class="field-hint">Apakah pemohon bekerja secara mandiri</span>
+                                    </label>
+                                    <select name="self_employed" required>
+                                        <option value="No">No</option>
+                                        <option value="Yes">Yes</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="form-section-card">
+                            <div class="fscard-header">
+                                <i class="fa-solid fa-wallet"></i> Pendapatan & Pinjaman
+                            </div>
+                            <div class="form-fields">
+                                <div class="field-group">
+                                    <label>Pendapatan Tahunan
+                                        <span class="field-hint">Contoh: 5000000</span>
+                                    </label>
+                                    <input type="number" name="income_annum" min="0" step="100000" value="5000000" required>
+                                </div>
+                                <div class="field-group">
+                                    <label>Jumlah Pinjaman
+                                        <span class="field-hint">Nominal pinjaman yang diajukan</span>
+                                    </label>
+                                    <input type="number" name="loan_amount" min="0" step="100000" value="15000000" required>
+                                </div>
+                                <div class="field-group">
+                                    <label>Tenor Pinjaman
+                                        <span class="field-hint">Jangka waktu pinjaman</span>
+                                    </label>
+                                    <input type="number" name="loan_term" min="1" value="10" required>
+                                </div>
+                                <div class="field-group">
+                                    <label>CIBIL Score
+                                        <span class="field-hint">Rentang umum 300 sampai 900</span>
+                                    </label>
+                                    <input type="number" name="cibil_score" min="300" max="900" value="720" required>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="form-column">
+                        <div class="form-section-card">
+                            <div class="fscard-header">
+                                <i class="fa-solid fa-building-columns"></i> Nilai Aset Pemohon
+                            </div>
+                            <div class="form-fields">
+                                <div class="field-group">
+                                    <label>Aset Residensial
+                                        <span class="field-hint">Nilai aset tempat tinggal</span>
+                                    </label>
+                                    <input type="number" name="residential_assets_value" min="0" step="100000" value="6000000" required>
+                                </div>
+                                <div class="field-group">
+                                    <label>Aset Komersial
+                                        <span class="field-hint">Nilai aset usaha atau komersial</span>
+                                    </label>
+                                    <input type="number" name="commercial_assets_value" min="0" step="100000" value="3000000" required>
+                                </div>
+                                <div class="field-group">
+                                    <label>Aset Mewah
+                                        <span class="field-hint">Nilai luxury assets pemohon</span>
+                                    </label>
+                                    <input type="number" name="luxury_assets_value" min="0" step="100000" value="9000000" required>
+                                </div>
+                                <div class="field-group">
+                                    <label>Aset Bank
+                                        <span class="field-hint">Nilai aset yang tercatat di bank</span>
+                                    </label>
+                                    <input type="number" name="bank_asset_value" min="0" step="100000" value="4000000" required>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="predict-result-box hidden" id="resultBox">
+                            <div class="result-header">Hasil Prediksi</div>
+                            <div class="result-icon" id="resultIcon"></div>
+                            <div class="result-label" id="resultLabel">—</div>
+                            <div class="result-probability">
+                                <div>
+                                    <span>Approved</span>
+                                    <strong id="approvedProbability">0%</strong>
+                                    <div class="prob-track"><div class="prob-fill approved" id="approvedBar"></div></div>
+                                </div>
+                                <div>
+                                    <span>Rejected</span>
+                                    <strong id="rejectedProbability">0%</strong>
+                                    <div class="prob-track"><div class="prob-fill rejected" id="rejectedBar"></div></div>
+                                </div>
+                            </div>
+                            <div class="result-desc" id="resultDesc">—</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="error-box hidden" id="errorBox"></div>
+
+                <div class="predict-action">
+                    <button type="submit" class="btn-predict" id="btnPredict">
+                        <i class="fa-solid fa-wand-magic-sparkles"></i>
+                        Mulai Prediksi
+                    </button>
+                    <button type="reset" class="btn-reset" id="btnReset">
+                        <i class="fa-solid fa-rotate-left"></i>
+                        Reset
+                    </button>
+                </div>
+            </form>
+        </section>
+
+        <section class="tab-content" id="tab-visualization">
+            <div class="page-header">
+                <h2><i class="fa-solid fa-chart-bar"></i> Visualisasi EDA</h2>
+                <p>Eksplorasi dataset melalui korelasi, feature importance, outlier, dan pola hubungan antarfitur.</p>
+            </div>
+
+            <div class="chart-row">
+                <div class="chart-card chart-card-wide">
+                    <div class="chart-card-header">
+                        <i class="fa-solid fa-arrow-trend-up"></i>
+                        Korelasi Fitur Numerik terhadap Status Approved
+                    </div>
+                    <div class="chart-body chart-body-tall">
+                        <canvas id="chartCorr"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <div class="chart-row">
+                <div class="chart-card">
+                    <div class="chart-card-header">
+                        <i class="fa-solid fa-ranking-star"></i>
+                        Feature Importance Random Forest
+                    </div>
+                    <div class="chart-body chart-body-tall">
+                        <canvas id="chartImportance"></canvas>
+                    </div>
+                </div>
+                <div class="chart-card">
+                    <div class="chart-card-header">
+                        <i class="fa-solid fa-triangle-exclamation"></i>
+                        Outlier per Fitur Numerik
+                    </div>
+                    <div class="chart-body chart-body-tall">
+                        <canvas id="chartOutlier"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <div class="chart-row">
+                <div class="chart-card">
+                    <div class="chart-card-header">
+                        <i class="fa-solid fa-gauge-high"></i>
+                        Distribusi CIBIL Score
+                    </div>
+                    <div class="chart-body">
+                        <canvas id="chartCibil"></canvas>
+                    </div>
+                </div>
+                <div class="chart-card">
+                    <div class="chart-card-header">
+                        <i class="fa-solid fa-coins"></i>
+                        Scatter CIBIL Score vs Jumlah Pinjaman
+                    </div>
+                    <div class="chart-body">
+                        <canvas id="chartScatter"></canvas>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section class="tab-content" id="tab-model">
+            <div class="page-header">
+                <h2><i class="fa-solid fa-brain"></i> Evaluasi Model Random Forest</h2>
+                <p>Menampilkan metrik evaluasi, confusion matrix, classification report, dan perbandingan model.</p>
+            </div>
+
+            <div class="metric-grid" id="metricGrid"></div>
+
+            <div class="chart-row">
+                <div class="chart-card">
+                    <div class="chart-card-header">
+                        <i class="fa-solid fa-table-cells"></i>
+                        Confusion Matrix
+                    </div>
+                    <div class="chart-body">
+                        <div class="cm-container" id="cmContainer"></div>
+                    </div>
+                </div>
+                <div class="chart-card">
+                    <div class="chart-card-header">
+                        <i class="fa-solid fa-clipboard-list"></i>
+                        Classification Report
+                    </div>
+                    <div class="chart-body">
+                        <canvas id="chartReport"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <div class="chart-row">
+                <div class="chart-card chart-card-wide">
+                    <div class="chart-card-header">
+                        <i class="fa-solid fa-trophy"></i>
+                        Perbandingan Model pada File Evaluasi
+                    </div>
+                    <div class="chart-body">
+                        <canvas id="chartModelComparison"></canvas>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section class="tab-content" id="tab-dataset">
+            <div class="page-header">
+                <h2><i class="fa-solid fa-table"></i> Preview Dataset</h2>
+                <p>Tampilan 15 baris pertama dataset loan approval yang digunakan dalam dashboard.</p>
+            </div>
+
+            <div class="table-wrapper">
+                <table class="data-table" id="dataTable">
+                    <thead id="dataTableHead"></thead>
+                    <tbody id="dataTableBody"></tbody>
+                </table>
+            </div>
+
+            <div class="dataset-meta" id="datasetMeta"></div>
+        </section>
+    </div>
+
+    <div class="loading-overlay hidden" id="loadingOverlay">
+        <div class="loading-spinner">
+            <i class="fa-solid fa-circle-notch fa-spin"></i>
+            <span>Memuat data...</span>
+        </div>
+    </div>
+
+    <div class="toast hidden" id="toast"></div>
+
+    <script src="{{ url_for('static', filename='script.js') }}"></script>
+</body>
+</html>
